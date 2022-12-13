@@ -48,7 +48,7 @@ Diesen Hinweis mit OK bestätigen.
 ![](/img/qtfirst1.jpg)
 
 ## History
-2022-12-13 Erste Verion
+2022-12-13 Erste Version
 
 ### Disclaimer
 The menulet is provided as is. It is tested under macOS Ventura (Intel).
