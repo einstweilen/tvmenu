@@ -14,7 +14,7 @@ Die aktuellste Version von **TV Menü** steht als ZIP-Datei unter [Releases](htt
 
 ## Feature
 * über 30 Sender im Livestream
-* Sender mit mehreren lokalen Streams werden in Submenüs zusammengefaßt werden
+* Sender mit mehreren lokalen Sendehäusern werden in Submenüs zusammengefaßt
 * die Senderliste kann bei Bedarf aktualisert werden
 * Wiedergabe mit dem QuickTime Player oder mit VLC
 * die Senderstreams lassen sich im QuickTime Player im normalen Fenster, im Vollbild oder auch als Schwebendes Fenster anzeigen
