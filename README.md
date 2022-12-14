@@ -50,7 +50,7 @@ Diesen Hinweis mit _OK_ bestätigen.
 
 ![](/img/qtplayer1.jpg)
 
-Sofern der Stream des Senders das unterstützt, kann dirkt im Player einn anderer Tonkanal/Sprache ausgewählt werden.
+Sofern der Stream des Senders das unterstützt, kann direkt im Player ein anderer Tonkanal/Sprache ausgewählt werden.
 
 ![](/img/qtoptionen1.jpg)
 
