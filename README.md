@@ -68,7 +68,7 @@ Screenshot mit Submenüs (links) und ohne Submenüs (rechts)
 Standardmäig ist der QuickTime Player voreingestellt, bei Bedarf kann zum VLC gewechselt werden
 
 ### Senderliste aktualisieren
-Beim ersten Start von **TV Menü** wird automatisch die aktuelle Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App geladen. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  die aktualisierte Liste veranläßt werden.
+Beim ersten Start von **TV Menü** wird automatisch die aktuelle Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App geladen. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  die aktualisierte Liste geladen werden.
 
 ## History
 * 2022-12-13 Erste Version
@@ -79,8 +79,8 @@ The menulet is provided as is. It is tested under macOS Ventura (Intel).
 ZAPP and Playtypus are open source software, you can make a donation to the developers on their websites.
 
 ### Reference 
-Die Streamadressen der Sender werden aus dem Repository von der ZAPP App für Android geladen.
+Die Streamadressen der Sender werden aus dem Repository von der **ZAPP** App für Android geladen.
 [ZAPP](https://github.com/mediathekview/zapp) by Christine Coenens is an open-source Android mediathek app.  
 
-Platypus wird verwendet, um das Skript als Menulet in der Menüleiste anzuzeigen.
+**Platypus** wird verwendet, um das Skript als Menulet in der Menüleiste anzuzeigen.
 [Platypus](https://sveinbjorn.org/platypus) by Sveinbjorn Thordarson creates native Mac applications from command line scripts such as shell scripts or Python, Perl, Ruby, Tcl, JavaScript and PHP programs.
