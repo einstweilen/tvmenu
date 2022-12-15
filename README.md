@@ -5,20 +5,19 @@
 
 Die aktuellste Version von **TV Menü** steht als ZIP-Datei unter [Releases](https://github.com/einstweilen/tvmenu/releases/) zur Verfügung.
 
-## Neue Funktionen in der Version 1.1
-![](/img/einstellungen2.png)
-* die Senderaktualisierung befindet sich im neuen Einstellungssubmenü
-* die Sendergruppen-Submenüs sind optional abschaltbar
-* für die Wiedergabe kann zwischen dem QuickTime Player und VLC gewählt werden
-* in 1.1.1 Caching des Sendermenüs ergänzt
+## Verbesserung in der Version 1.2
+* deutlich schnellere Menüanzeige
 
+In den älteren Versionen wurden die Sender durch das Python Skript dargestellt. Beim Anklicken des TV Icons mußte dazu jedes Mal zuerst im Hintergrund Python starten, was sich durch eine kleine Verzögerung nach dem Klick bis zum Öffnen des Menüs bemerkbar machte.
+Durch die Umstellung von der volldynamischen Generierung des Sendermenüs auf ein Caching des dabei von Python generierten Menüs in eine Datei in der TV Menü Version 1.1.1, kann diese gecachte Datei nun durch ein quasi sofort startendes Bash Skript ausgegeben werden.
+Nur wenn der User aus dem Menü einen Sender auswählt oder eine Einstellung vornimmt, wird diese Eingabe vom Bash Skript zur Weiterbearbeitung an das Python Skript übergeben.
 
 ## Feature
 * über 30 Sender im Livestream
 * Sender mit mehreren lokalen Sendehäusern werden in Submenüs zusammengefaßt
-* die Senderliste kann bei Bedarf aktualisert werden
 * Wiedergabe mit dem QuickTime Player oder mit VLC
 * die Senderstreams lassen sich im QuickTime Player im normalen Fenster, im Vollbild oder auch als Schwebendes Fenster anzeigen
+* die Senderliste kann bei Bedarf aktualisert werden
 
 ## Download und Installation
 Die aktuelle Version von **TV Menü** steht als ZIP-Datei unter [Releases](https://github.com/einstweilen/tvmenu/releases/) zur Verfügung.
@@ -72,6 +71,7 @@ Standardmäig ist der QuickTime Player voreingestellt, bei Bedarf kann zum VLC g
 Beim ersten Start von **TV Menü** wird automatisch die aktuelle Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App geladen. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  die aktualisierte Liste geladen werden.
 
 ## History
+* 2022-12-16 schnellere Menüdarstellung durch zusätzliches Bash Skript
 * 2022-12-15 Caching des Sendermenüs ergänzt
 * 2022-12-14 Einstellungsmenü zum An- und Abschalten der Sendersubmenüs und Wahlmöglichkeit des Videoplayers, QuickTime Player oder VLC ergänzt
 * 2022-12-13 Erste Version
