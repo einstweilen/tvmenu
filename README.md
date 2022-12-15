@@ -10,6 +10,7 @@ Die aktuellste Version von **TV Menü** steht als ZIP-Datei unter [Releases](htt
 * die Senderaktualisierung befindet sich im neuen Einstellungssubmenü
 * die Sendergruppen-Submenüs sind optional abschaltbar
 * für die Wiedergabe kann zwischen dem QuickTime Player und VLC gewählt werden
+* in 1.1.1 Caching des Sendermenüs ergänzt
 
 
 ## Feature
@@ -71,8 +72,9 @@ Standardmäig ist der QuickTime Player voreingestellt, bei Bedarf kann zum VLC g
 Beim ersten Start von **TV Menü** wird automatisch die aktuelle Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App geladen. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  die aktualisierte Liste geladen werden.
 
 ## History
-* 2022-12-13 Erste Version
+* 2022-12-15 Caching des Sendermenüs ergänzt
 * 2022-12-14 Einstellungsmenü zum An- und Abschalten der Sendersubmenüs und Wahlmöglichkeit des Videoplayers, QuickTime Player oder VLC ergänzt
+* 2022-12-13 Erste Version
 
 ### Disclaimer
 The menulet is provided as is. It is tested under macOS Ventura (Intel).
