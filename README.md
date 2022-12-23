@@ -1,16 +1,9 @@
 # TV Menü für macOS
-**TV Menü** ist ein Python Skript für macOS, mit dem sich die Streams der öffentlich-rechtlichen Sender aus der Menüleiste heraus im QuickTime Player ansehen lassen.
+**TV Menü** ist ein Menulet für macOS, mit dem sich die Streams der öffentlich-rechtlichen Sender aus der Menüleiste heraus öffnen lassen.
 
 ![](/img/menu1.png)
 
-Die aktuellste Version von **TV Menü** steht als ZIP-Datei unter [Releases](https://github.com/einstweilen/tvmenu/releases/) zur Verfügung.
-
-## Verbesserung in der Version 1.2
-* deutlich schnellere Menüanzeige
-
-In den älteren Versionen wurden die Sender durch das Python Skript dargestellt. Beim Anklicken des TV Icons mußte dazu jedes Mal zuerst im Hintergrund Python starten, was sich durch eine kleine Verzögerung nach dem Klick bis zum Öffnen des Menüs bemerkbar machte.
-Durch die Umstellung von der volldynamischen Generierung des Sendermenüs auf ein Caching des dabei von Python generierten Menüs in eine Datei in der TV Menü Version 1.1.1, kann diese gecachte Datei nun durch ein quasi sofort startendes Bash Skript ausgegeben werden.
-Nur wenn der User aus dem Menü einen Sender auswählt oder eine Einstellung vornimmt, wird diese Eingabe vom Bash Skript zur Weiterbearbeitung an das Python Skript übergeben.
+Die aktuellste Version von **TV Menü** kann unter [Releases](https://github.com/einstweilen/tvmenu/releases/) heruntergeladen werden.
 
 ## Feature
 * über 30 Sender im Livestream
@@ -20,7 +13,7 @@ Nur wenn der User aus dem Menü einen Sender auswählt oder eine Einstellung vor
 * die Senderliste kann bei Bedarf aktualisert werden
 
 ## Download und Installation
-Die aktuelle Version von **TV Menü** steht als ZIP-Datei unter [Releases](https://github.com/einstweilen/tvmenu/releases/) zur Verfügung.
+Die aktuellste Version von **TV Menü** kann unter [Releases](https://github.com/einstweilen/tvmenu/releases/) heruntergeladen werden.
 
 Nach dem Download **TV Menü.zip** mit einem Doppelklick entpacken und das entpackte Programm **TV Menü** in den Programmeordner kopieren. Es ist aber auch in jedem anderen Ordner ausführbar.
 
@@ -34,7 +27,7 @@ Das 📺 Symbol in der Menüleiste anklicken und aus dem Menü den gewünschten 
 
 ![](/img/menukmpl1.png)
 
-Sender mit mehreren lokalen Streams werden standardmäßig zur besseren Übersicht in Submenüs zusammengefaßt.
+Sender mit mehreren lokalen Streams werden standardmäßig in Submenüs zusammengefaßt.
 
 ![](/img/submenu1.png)
 
@@ -43,7 +36,7 @@ Ein im Menü ausgewählter Sender wird im Player abgespielt, für die Wiedergabe
 Je nach dem gewählten Sender und der eigenen Internetanbindung kann es 5 Sekunden dauern bis der erste Stream startet. 
 
 Damit nicht mehrere Streams gleichzeitig wiedergegeben werden, werden alle geöffneten Fenster des Players zuerst geschlossen.
-Es kann einmalig ein Hinweis erscheinen, dass der QuickTime Player von **TV Menü** fernbedient wird.
+Es kann einmalig ein Hinweis erscheinen, dass der Player von **TV Menü** fernbedient wird.
 Diesen Hinweis mit _OK_ bestätigen.
 
 ![](/img/qtfirst1.jpg)
@@ -65,12 +58,13 @@ Die Gruppierung der Sender zu Sendergruppen ein- bzw. ausschalten.
 Screenshot mit Submenüs (links) und ohne Submenüs (rechts)
 
 ### Wiedergabeplayer wählen QuickTime Player oder VLC
-Standardmäig ist der QuickTime Player voreingestellt, bei Bedarf kann zum VLC gewechselt werden
+Standardmäig ist der QuickTime Player voreingestellt, bei Bedarf kann zum VLC gewechselt werden, z.B. wenn man mehrere Monitore ohne getrennte Spaces verwendet und der QuickTime Player dann im Vollbild Modus alle anderen Monitore schwarz machen würde.
 
 ### Senderliste aktualisieren
-Beim ersten Start von **TV Menü** wird automatisch die aktuelle Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App geladen. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  die aktualisierte Liste geladen werden.
+**TV Menü** verwendet die Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  eine neue Liste von der ZAPP Projektseite geladen werden.
 
 ## History
+* 2022-12-23 subprocess durch plistlib ersetzt
 * 2022-12-16 schnellere Menüdarstellung durch zusätzliches Bash Skript
 * 2022-12-15 Caching des Sendermenüs ergänzt
 * 2022-12-14 Einstellungsmenü zum An- und Abschalten der Sendersubmenüs und Wahlmöglichkeit des Videoplayers, QuickTime Player oder VLC ergänzt
