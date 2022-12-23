@@ -1,0 +1,48 @@
+[
+  {
+	"id": "tagesschau24",
+	"name": "tagesschau24",
+	"stream_url": "https://tagesschau.akamaized.net/hls/live/2020115/tagesschau/tagesschau_1/master.m3u8",
+	"logo_name": "channel_logo_tagesschau24",
+	"color": "#001A4B"
+  },
+  {
+	"id": "ndr_hh",
+	"name": "NDR Hamburg",
+	"stream_url": "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_hh/master.m3u8",
+	"logo_name": "channel_logo_ndr",
+	"subtitle": "Hamburg",
+	"color": "#173E7D"
+  },
+  {
+	"id": "ndr_nds",
+	"name": "NDR Niedersachsen",
+	"stream_url": "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8",
+	"logo_name": "channel_logo_ndr",
+	"subtitle": "Nieder\u00adsachsen",
+	"color": "#173E7D"
+  },
+  {
+	"id": "ndr_mv",
+	"name": "NDR Mecklenburg-Vorpommern",
+	"stream_url": "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_mv/master.m3u8",
+	"logo_name": "channel_logo_ndr",
+	"subtitle": "Mecklenburg-Vorpommern",
+	"color": "#173E7D"
+  },
+  {
+	"id": "ndr_sh",
+	"name": "NDR Schleswig-Holstein",
+	"stream_url": "https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_sh/master.m3u8",
+	"logo_name": "channel_logo_ndr",
+	"subtitle": "Schleswig-Holstein",
+	"color": "#173E7D"
+  },
+  {
+	"id": "muctv",
+	"name": "München.TV",
+	"stream_url": "https://stream02.welocal.stream/stream/fhd-muenchentv_365036/ngrp:stream_all/playlist.m3u8",
+	"logo_name": "channel_logo_muctv",
+	"color": "#0F2995"
+  }
+]

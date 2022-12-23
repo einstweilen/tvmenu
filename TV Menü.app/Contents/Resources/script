@@ -1,0 +1,14 @@
+#!/bin/bash
+
+if [ "$#" -ne 0 ]; then
+    python3 script.py "$@"
+fi
+
+menu="data/menu_kmpl.txt"
+if [ -f "$menu" ]; then
+    cat "$menu"
+else
+    python3 script.py "$@"
+fi
+
+exit 0
