@@ -1,6 +1,6 @@
 #!/usr/local/bin/python3
 
-# TV Menü 1.1.1
+# TV Menü 1.2.1
 # https://github.com/einstweilen/tvmenu
 
 import sys
@@ -8,20 +8,22 @@ import os
 import requests
 import json
 import unicodedata
-import subprocess
+import plistlib
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-if not os.path.exists('data'):
-    os.makedirs('data')
+pref_file = os.path.expanduser('~/Library/Preferences/com.einstweilen.tvmenu.plist')
+script_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(script_dir)
+data_dir = os.path.join(script_dir, 'data')
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
 
-pref_file = 'com.einstweilen.tvmenu'
-channels_file = 'data/channels.json'
-channels_backup_file = 'data/channels_backup.json'
-channels_fixer = 'data/channels_fix.json'  # korrigierte und zusätzliche Channels
-channels_all = 'data/channels_all.json'
+channels_file = os.path.join(data_dir, 'channels.json')
+channels_backup_file = os.path.join(data_dir, 'channels_backup.json')
+channels_fixer = os.path.join(data_dir, 'channels_fix.json')  # korrigierte und zusätzliche Channels
+channels_all = os.path.join(data_dir, 'channels_all.json')
+menu_kmpl = os.path.join(data_dir, 'menu_kmpl.txt')
 channel_url = "https://raw.githubusercontent.com/mediathekview/zapp/main/app/src/main/res/raw/channels.json"
 
-menu_kmpl = "data/menu_kmpl.txt"
 
 # Aufrufcommandos für die Streamplayer
 players = {
@@ -32,29 +34,33 @@ players = {
 
 def read_pref(pref_key):
     try:
-        pref_value = (subprocess.check_output(["defaults", "read", pref_file, pref_key],
-                                              stderr=subprocess.STDOUT)).decode("utf-8").strip()
-    except:
+        with open(pref_file, "rb") as f:
+            prefs = plistlib.load(f)
+    except (IOError, KeyError):
         # Standardwerte in Preferencedatei schreiben
-        subprocess.run(['defaults', 'write', pref_file, 'player', '-string', 'QuickTime'])
-        subprocess.run(['defaults', 'write', pref_file, 'submenus', '-bool', 'TRUE'])
-        pref_value = (subprocess.check_output(["defaults", "read", pref_file, pref_key])).decode("utf-8").strip()
+        prefs = {"player": "QuickTime", "submenus": True}
+        with open(pref_file, "wb") as f:
+            plistlib.dump(prefs, f)
+    pref_value = prefs[pref_key]
     return pref_value
 
 
-def write_pref(pref_key, pref_type, pref_value):
+def write_pref(pref_key, pref_value):
     try:
-        _ = (subprocess.check_output(["defaults", "read", pref_file, pref_key], stderr=subprocess.STDOUT)).decode("utf-8").strip()
-    except:
+        with open(pref_file, 'rb') as fp:
+            prefs = plistlib.load(fp)
+    except FileNotFoundError:
         # Standardwerte in Preferencedatei schreiben
-        subprocess.run(['defaults', 'write', pref_file, 'player', '-string', 'QuickTime'])
-        subprocess.run(['defaults', 'write', pref_file, 'submenus', '-bool', 'TRUE'])
-    subprocess.run(['defaults', 'write', pref_file, pref_key, pref_type, pref_value])
-    return
+        prefs = {"player": "QuickTime", "submenus": True}
+        with open(pref_file, "wb") as f:
+            plistlib.dump(prefs, f)
+    with open(pref_file, 'wb') as fp:
+        prefs[pref_key] = pref_value
+        plistlib.dump(prefs, fp)
 
 
-def close_player(player):
-    if player == "QuickTime":
+def close_player(the_player):
+    if the_player == "QuickTime":
         cmd = """osascript -e '
         tell application "QuickTime Player" to close every window
         '
@@ -168,7 +174,7 @@ def menu_ausgabe():
             playermenuitem = "VLC verwenden"
         else:
             playermenuitem = "QT Player verwenden"
-        if submenu == "1":
+        if submenu:
             submenuitem = "Submenüs ausschalten"
         else:
             submenuitem = "Submenüs einschalten"
@@ -183,7 +189,7 @@ player = read_pref('player')
 streamplayer=(players[player])
 
 submenu = read_pref('submenus')
-if submenu == "1":
+if submenu:
     gruppen_min = 2
 else:
     gruppen_min = 10
@@ -198,13 +204,13 @@ def main():
         if parameter == "Senderliste aktualisieren":
             channels_update()
         elif parameter == "VLC verwenden":
-            write_pref('player', '-string', 'VLC')
+            write_pref('player', 'VLC')
         elif parameter == "QT Player verwenden":
-            write_pref('player', '-string', 'QuickTime')
+            write_pref('player', 'QuickTime')
         elif parameter == "Submenüs ausschalten":
-            write_pref('submenus', '-bool', 'FALSE')
+            write_pref('submenus', False)
         elif parameter == "Submenüs einschalten":
-            write_pref('submenus', '-bool', 'TRUE')
+            write_pref('submenus', True)
         else:
             stream_abspielen(parameter)
         if os.path.isfile(menu_kmpl):
