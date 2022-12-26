@@ -64,6 +64,7 @@ Standardmäig ist der QuickTime Player voreingestellt, bei Bedarf kann zum VLC g
 **TV Menü** verwendet die Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  eine neue Liste von der ZAPP Projektseite geladen werden.
 
 ## History
+* 2022-12-26 Python durch funktionsidentisches Bash Skript ersetzt
 * 2022-12-23 subprocess durch plistlib ersetzt
 * 2022-12-16 schnellere Menüdarstellung durch zusätzliches Bash Skript
 * 2022-12-15 Caching des Sendermenüs ergänzt
