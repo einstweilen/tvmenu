@@ -1,14 +1,238 @@
 #!/bin/bash
 
-if [ "$#" -ne 0 ]; then
-    python3 script.py "$@"
+# https://github.com/einstweilen/tvmenu
+# 2022-12-26
+
+if [ "$#" -eq 0 ]; then
+    menu_sender="data/menu_sender.txt"
+    if [ -f "$menu_sender" ]; then
+        cat "$menu_sender" "data/menu_sub.txt" # Senderliste im Menü ausgeben
+        exit
+    fi
 fi
 
-menu="data/menu_kmpl.txt"
-if [ -f "$menu" ]; then
-    cat "$menu"
+init(){
+    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )" # Pfad zum Skript
+    cd "$DIR" || exit
+    data_dir="$DIR/data"
+    mkdir -p "$data_dir"
+    channels_file="$data_dir/channels.txt" # ZAPP Sender, gefiltert und vorformatiert
+    channels_backup_file="$data_dir/channels_backup.txt" # falls Server nicht erreichbar
+    channels_fixer="$data_dir/channels_fix.txt" # zusätzliche Sender z.B. Ersatz für Streams mit '@'
+    channels_all="$data_dir/channels_all.txt" # channels_file + channels_fixer
+    menu_sender="$data_dir/menu_sender.txt" # Sendernamensliste wie im Menü angezeigt
+    menu_sub="$data_dir/menu_sub.txt" # Einstellungssubmenü
+    channels_url="https://raw.githubusercontent.com/mediathekview/zapp/main/app/src/main/res/raw/channels.json"
+    pref_file='com.einstweilen.tvmenu'
+}
+
+pref_write(){
+    defaults write "$pref_file" "$1" "$2"
+}
+
+pref_read(){
+    defaults read "$pref_file" "$1" 2>/dev/null
+}
+
+pref_init(){
+    pref_write 'player' 'QuickTime'
+    pref_write 'submenus' 'True'
+}
+
+close_player(){
+    if [[ "$1" == "QuickTime" ]]; then
+        osascript -e 'tell application "QuickTime Player" to close every window' >> /dev/null 2>&1
+    else
+        osascript -e 'tell application "VLC" to close every window' >> /dev/null 2>&1
+    fi
+}
+
+stream_abspielen(){
+    get_channels
+    for channel in "${channels[@]}"; do
+        sender="${channel%|*}"
+        url="${channel##*|}"
+        if [ "$sender" == "$1" ]; then
+            player="$(pref_read 'player')"
+            close_player "$player"
+            if [[ "$player" == "QuickTime" ]]; then
+                open -a 'QuickTime Player.app' -u "$url"
+            else
+                open -a 'VLC.app' -u "$url"
+            fi
+            exit 0
+        fi
+    done
+    # Sender nicht gefunden
+    exit 1
+}
+
+get_channels(){
+    if [ ! -f "$channels_all" ]; then
+        # Sender von ZAPP holen
+        if [ ! -f "$channels_file" ]; then
+            raw=$(curl -s "$channels_url")
+            IFS=$'\n' ch_rw=($(grep '"name"' <<< "$raw")) ; unset IFS
+            IFS=$'\n' url_rw=($(grep '"stream_url"' <<< "$raw")) ; unset IFS
+            if [[ ${#ch_rw[*]} -eq ${#url_rw[*]} ]]; then
+                sep='": "'
+                for ((i=0;i<${#ch_rw[*]}; i++)); do
+                    n=${ch_rw[i]}; n=${n#*$sep} ; n=${n:0:$((${#n} - 2))}
+                    u=${url_rw[i]}; u=${u#*$sep} ; u=${u:0:$((${#u} - 2))}
+                    if [[ ! "$u" == *@* ]]; then # nur wenn kein @ in der StreamURL
+                        n=${n//\\u00ad/} # Weiches Trennzeichen im Sendernamen entfernen
+                        echo "$n|$u" >> "$channels_file" # Sendername|StreamURL
+                    fi
+                done
+            else
+                # falls Fehler im JSON File sind, Backup einspielen
+                cp "$channels_backup_file" "$channels_file" 2>/dev/null || :
+            fi
+        fi
+        # Sender aus statischer Datei hinzufügen
+        # z.B. Ersatz für die NDR Sender, die von ZAPP nicht im QTP funktionieren
+        if [ ! -f "$channels_fixer" ]; then
+            touch "$channels_fixer"
+        fi
+
+        cat "$channels_file" "$channels_fixer" | sort -f  > "$channels_all"
+        rm -f "$menu_sender" # erzwingt Menü Neugenerierung 
+    fi
+    unset channels
+    IFS=$'\n' read -d '' -r -a channels < "$channels_all"
+}
+
+channels_update(){
+    if [ ! -f "$channels_all" ]; then
+        rm -f "$channels_all"
+        get_channels
+    fi
+    menu_ausgabe
+}
+
+menu_ausgabe(){
+    update_sendermenu
+    update_servicemenu
+    cat "$menu_sender" "$menu_sub"
+}
+
+update_sendermenu(){
+    # anzeigbare Sender ermitteln
+    unset menu_items  # Inhalt der Sendermenüs
+    unset sender_menu  # Sender die im Menü angezeigt werden
+    unset sender_gruppen  # Lokalsender NDR Nds, NDR HH, NDR SH usw.
+
+    get_channels
+    for channel in "${channels[@]}"; do
+        sender="${channel%|*}"
+        url="${channel##*|}"
+        sendername="$sender"
+        sender_menu+=("$sendername")
+        sender_gruppen+=(${sendername%% *}) # erstes Wort des Namens als Gruppenkennung
+    done
+    IFS=$'\n' sender_menu=($(sort -f <<<"${sender_menu[*]}")); unset IFS
+    IFS=$'\n' sender_gruppen=($(sort -f <<<"${sender_gruppen[*]}")); unset IFS
+    # Sendergruppen anhand Mehrfachnennungen ermitteln
+    submenu=$(pref_read 'submenus')
+    if [[ $submenu == True ]]; then 
+        gruppen_min=2 # Sendergruppe beginnt ab 2 Sendern in Sendergruppe
+    else
+        gruppen_min=10 # zeige Submenü ab 10 Sendern in Sendergruppe - quasi ausgeschaltet
+    fi
+    unset gruppen_submenu # Sendergruppen mit eigenem Submenü
+    temp="" ; temp_c=0
+    for ((i=0;i<${#sender_gruppen[*]}; i++)); do
+        if [[ ${sender_gruppen[i]} == "$temp" ]]; then
+            ((temp_c++))
+        else
+            temp="${sender_gruppen[i]}"
+            temp_c=1
+        fi
+        if [[ temp_c -ge gruppen_min ]] && [[ ! " ${gruppen_submenu[*]} " =~ " ${sender_gruppen[i]} " ]]; then
+            gruppen_submenu+=(${sender_gruppen[i]})
+        fi
+    done
+
+    # Senderlistenmenu
+    sender_submenu=""
+    submenu_aktiv=false
+    sender_menu+=("----")
+    gruppe_aktuell=""
+    for sendername in "${sender_menu[@]}"; do
+        gruppe="${sendername%% *}"
+        if [[ " ${gruppen_submenu[*]} " =~ " ${gruppe} " ]]; then
+            if [[ ${gruppe} != "${gruppe_aktuell}" ]]; then
+                if [[ $submenu_aktiv == true ]]; then
+                    menu_items+=("${sender_submenu}")
+                    submenu_aktiv=false
+                fi
+                sender_submenu="SUBMENU|${gruppe}"
+                gruppe_aktuell="$gruppe"
+                submenu_aktiv=true
+            fi
+            sender_submenu="${sender_submenu}|${sendername}"
+        else
+            if [[ submenu_aktiv == true ]]; then
+                menu_items+=("${sender_submenu}")
+                submenu_aktiv=false
+                menu_items+=("${sendername}")
+            else
+                menu_items+=("${sendername}")
+            fi
+        fi
+    done
+    printf "%s\n" "${menu_items[@]}" > "$menu_sender"
+}
+
+update_servicemenu(){
+    # Einstellungsmenü
+    player=$(pref_read 'player')
+    if [[ "$player" == "QuickTime" ]]; then
+        playermenuitem="VLC verwenden"
+    else
+        playermenuitem="QT Player verwenden"
+    fi
+
+    submenu=$(pref_read 'submenus')
+    if [[ "$submenu" == True ]]; then
+        submenuitem="Submenüs ausschalten"
+    else
+        submenuitem="Submenüs einschalten"
+    fi
+    servicemenu="SUBMENU|Einstellungen|${submenuitem}|${playermenuitem}|----|Senderliste aktualisieren"
+    printf "%s\n" "$servicemenu" > "$menu_sub"
+}
+
+init
+
+# Übergabeparameter auswerten
+if [ "$#" -gt 0 ]; then
+    parameter="$*"
+    case "$parameter" in
+        'Senderliste aktualisieren')
+            channels_update
+            ;;
+        'VLC verwenden')
+            pref_write 'player' 'VLC'
+            menu_ausgabe
+            ;;
+        'QT Player verwenden')
+            pref_write 'player' 'QuickTime'
+            menu_ausgabe
+            ;;
+        'Submenüs ausschalten')
+            pref_write 'submenus' 'False'
+            menu_ausgabe
+            ;;
+        'Submenüs einschalten')
+            pref_write 'submenus' 'True'
+            menu_ausgabe
+            ;;
+        *)
+            stream_abspielen "$parameter"
+            ;;
+    esac
 else
-    python3 script.py "$@"
+    menu_ausgabe
 fi
-
 exit 0
