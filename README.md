@@ -58,12 +58,15 @@ Die Gruppierung der Sender zu Sendergruppen ein- bzw. ausschalten.
 Screenshot mit Submenüs (links) und ohne Submenüs (rechts)
 
 ### Wiedergabeplayer wählen QuickTime Player oder VLC
-Standardmäig ist der QuickTime Player voreingestellt, bei Bedarf kann zum VLC gewechselt werden, z.B. wenn man mehrere Monitore ohne getrennte Spaces verwendet und der QuickTime Player dann im Vollbild Modus alle anderen Monitore schwarz machen würde.
+Standardmäßig ist der QuickTime Player voreingestellt, bei Bedarf kann zum VLC gewechselt werden, z.B. wenn man mehrere Monitore ohne getrennte Spaces verwendet und der QuickTime Player dann im Vollbild Modus alle anderen Monitore schwarz machen würde.
+
+Ist VLC nicht installiert, ist "VLC verwenden" im Submenü ausgegraut.
 
 ### Senderliste aktualisieren
 **TV Menü** verwendet die Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  eine neue Liste von der ZAPP Projektseite geladen werden.
 
 ## History
+* 2022-12-27 Playerauswahl nur wenn VLC installiert ist, SWR Sendergruppe wieder im Menü gelistet
 * 2022-12-26 Python durch funktionsidentisches Bash Skript ersetzt
 * 2022-12-23 subprocess durch plistlib ersetzt
 * 2022-12-16 schnellere Menüdarstellung durch zusätzliches Bash Skript
