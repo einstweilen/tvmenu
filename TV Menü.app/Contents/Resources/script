@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # https://github.com/einstweilen/tvmenu
-# 2022-12-26
+# 2022-12-27
 
 if [ "$#" -eq 0 ]; then
     menu_sender="data/menu_sender.txt"
@@ -39,6 +39,10 @@ pref_init(){
     pref_write 'submenus' 'True'
 }
 
+check_VLC(){
+    mdfind kind:application -name 'VLC' 2>/dev/null | grep -q "VLC.app" && return 0 || return 1
+}
+
 close_player(){
     if [[ "$1" == "QuickTime" ]]; then
         osascript -e 'tell application "QuickTime Player" to close every window' >> /dev/null 2>&1
@@ -71,21 +75,26 @@ get_channels(){
     if [ ! -f "$channels_all" ]; then
         # Sender von ZAPP holen
         if [ ! -f "$channels_file" ]; then
-            raw=$(curl -s "$channels_url")
-            IFS=$'\n' ch_rw=($(grep '"name"' <<< "$raw")) ; unset IFS
-            IFS=$'\n' url_rw=($(grep '"stream_url"' <<< "$raw")) ; unset IFS
-            if [[ ${#ch_rw[*]} -eq ${#url_rw[*]} ]]; then
-                sep='": "'
-                for ((i=0;i<${#ch_rw[*]}; i++)); do
-                    n=${ch_rw[i]}; n=${n#*$sep} ; n=${n:0:$((${#n} - 2))}
-                    u=${url_rw[i]}; u=${u#*$sep} ; u=${u:0:$((${#u} - 2))}
-                    if [[ ! "$u" == *@* ]]; then # nur wenn kein @ in der StreamURL
-                        n=${n//\\u00ad/} # Weiches Trennzeichen im Sendernamen entfernen
-                        echo "$n|$u" >> "$channels_file" # Sendername|StreamURL
-                    fi
-                done
+            raw=$(curl -s --max-time 9 "$channels_url")
+            if [ "$?" -eq 0 ]; then
+                IFS=$'\n' ch_rw=($(grep '"name"' <<< "$raw")) ; unset IFS
+                IFS=$'\n' url_rw=($(grep '"stream_url"' <<< "$raw")) ; unset IFS
+                if [[ ${#ch_rw[*]} -eq ${#url_rw[*]} ]]; then
+                    t='": "' # Trenner im JSON File
+                    for ((i=0;i<${#ch_rw[*]}; i++)); do
+                        n=${ch_rw[i]}; n=${n#*"$t"} ; n=${n:0:$((${#n} - 2))}
+                        u=${url_rw[i]}; u=${u#*"$t"} ; u=${u:0:$((${#u} - 2))}
+                        if [[ ! "$u" == *@* ]]; then # nur wenn kein @ in der StreamURL
+                            n=${n//\\u00ad/} # Weiches Trennzeichen im Sendernamen entfernen
+                            echo "$n|$u" >> "$channels_file" # Sendername|StreamURL
+                        fi
+                    done
+                else
+                    # falls Fehler im JSON File sind, Backup einspielen
+                    cp "$channels_backup_file" "$channels_file" 2>/dev/null || :
+                fi
             else
-                # falls Fehler im JSON File sind, Backup einspielen
+                # falls der Server nicht erreichbar ist, Backupfile verwenden
                 cp "$channels_backup_file" "$channels_file" 2>/dev/null || :
             fi
         fi
@@ -128,13 +137,13 @@ update_sendermenu(){
         url="${channel##*|}"
         sendername="$sender"
         sender_menu+=("$sendername")
-        sender_gruppen+=(${sendername%% *}) # erstes Wort des Namens als Gruppenkennung
+        sender_gruppen+=("${sendername%% *}") # erstes Wort des Namens als Gruppenkennung
     done
     IFS=$'\n' sender_menu=($(sort -f <<<"${sender_menu[*]}")); unset IFS
     IFS=$'\n' sender_gruppen=($(sort -f <<<"${sender_gruppen[*]}")); unset IFS
     # Sendergruppen anhand Mehrfachnennungen ermitteln
     submenu=$(pref_read 'submenus')
-    if [[ $submenu == True ]]; then 
+    if [[ $submenu == true ]]; then 
         gruppen_min=2 # Sendergruppe beginnt ab 2 Sendern in Sendergruppe
     else
         gruppen_min=10 # zeige Submenü ab 10 Sendern in Sendergruppe - quasi ausgeschaltet
@@ -148,8 +157,8 @@ update_sendermenu(){
             temp="${sender_gruppen[i]}"
             temp_c=1
         fi
-        if [[ temp_c -ge gruppen_min ]] && [[ ! " ${gruppen_submenu[*]} " =~ " ${sender_gruppen[i]} " ]]; then
-            gruppen_submenu+=(${sender_gruppen[i]})
+        if [[ temp_c -ge gruppen_min ]] && [[ ! " ${gruppen_submenu[*]} " =~ ${sender_gruppen[i]} ]]; then
+            gruppen_submenu+=("${sender_gruppen[i]}")
         fi
     done
 
@@ -160,7 +169,7 @@ update_sendermenu(){
     gruppe_aktuell=""
     for sendername in "${sender_menu[@]}"; do
         gruppe="${sendername%% *}"
-        if [[ " ${gruppen_submenu[*]} " =~ " ${gruppe} " ]]; then
+        if [[ " ${gruppen_submenu[*]} " =~ ${gruppe} ]]; then
             if [[ ${gruppe} != "${gruppe_aktuell}" ]]; then
                 if [[ $submenu_aktiv == true ]]; then
                     menu_items+=("${sender_submenu}")
@@ -172,7 +181,7 @@ update_sendermenu(){
             fi
             sender_submenu="${sender_submenu}|${sendername}"
         else
-            if [[ submenu_aktiv == true ]]; then
+            if [[ $submenu_aktiv == true ]]; then
                 menu_items+=("${sender_submenu}")
                 submenu_aktiv=false
                 menu_items+=("${sendername}")
@@ -185,16 +194,21 @@ update_sendermenu(){
 }
 
 update_servicemenu(){
-    # Einstellungsmenü
-    player=$(pref_read 'player')
-    if [[ "$player" == "QuickTime" ]]; then
-        playermenuitem="VLC verwenden"
-    else
-        playermenuitem="QT Player verwenden"
+    # Einstellungssubmenü
+    if check_VLC ; then
+        # Playerauswahl nur anzeigen, wenn VLC installiert ist
+        player=$(pref_read 'player')
+        if [[ $player == "QuickTime" ]]; then
+            playermenuitem="VLC verwenden"
+        else
+            playermenuitem="QT Player verwenden"
+        fi
+    else # VLC Option ausgrauen
+        playermenuitem="DISABLED|VLC verwenden"
     fi
 
     submenu=$(pref_read 'submenus')
-    if [[ "$submenu" == True ]]; then
+    if [[ $submenu == true ]]; then
         submenuitem="Submenüs ausschalten"
     else
         submenuitem="Submenüs einschalten"
@@ -204,7 +218,6 @@ update_servicemenu(){
 }
 
 init
-
 # Übergabeparameter auswerten
 if [ "$#" -gt 0 ]; then
     parameter="$*"
@@ -213,7 +226,9 @@ if [ "$#" -gt 0 ]; then
             channels_update
             ;;
         'VLC verwenden')
-            pref_write 'player' 'VLC'
+            if check_VLC ; then
+                pref_write 'player' 'VLC'
+            fi
             menu_ausgabe
             ;;
         'QT Player verwenden')
@@ -221,12 +236,15 @@ if [ "$#" -gt 0 ]; then
             menu_ausgabe
             ;;
         'Submenüs ausschalten')
-            pref_write 'submenus' 'False'
+            pref_write 'submenus' 'false'
             menu_ausgabe
             ;;
         'Submenüs einschalten')
-            pref_write 'submenus' 'True'
+            pref_write 'submenus' 'true'
             menu_ausgabe
+            ;;
+        'debug')
+            check_VLC
             ;;
         *)
             stream_abspielen "$parameter"
