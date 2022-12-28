@@ -62,8 +62,17 @@ Standardmäßig ist der QuickTime Player voreingestellt, bei Bedarf kann zum VLC
 
 Ist VLC nicht installiert, ist "VLC verwenden" im Submenü ausgegraut.
 
+![](/img/einstellungen3.png)
 ### Senderliste aktualisieren
 **TV Menü** verwendet die Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  eine neue Liste von der ZAPP Projektseite geladen werden.
+
+## Randnotiz
+### Umstellung von Python auf Bash
+Bis zur Version 1.2.1 ([Download der letzen Python Version](https://github.com/einstweilen/tvmenu/releases/tag/1.2.1)) wurde für **TV Menü** ein Pythonskript verwendet. Platypus, der Wrapper für das Menulet, führte das Skript bei jeder Interaktion neu aus und hat dafür auch Python jedes Mal gestartet, was zu einer sichtbaren Verzögerung beim Menüaufklappen führte.
+
+Durch Filecaching und Darstellung des Menüs durch ein kleines Shellskript, ließ sich das zwar beheben, machte aber zwei Skripte notwendig: Shellskript für die Auslieferung des Menüs und Pythonskript für die Generierung des Menü aus den Senderdaten und das Handling des Videoplayers).
+
+Aus reiner Bequemlichkeit und da **TV Menü** mit der letzten Python Version funktional vollständig war, wurde das Pythonskript 1 zu 1 in ein Shellskript umgeschrieben, das jetzt für alles zuständig ist und das vor allem als 'pure bash' auf jedem Mac laufen sollte.
 
 ## History
 * 2022-12-27 Playerauswahl nur wenn VLC installiert ist, SWR Sendergruppe wieder im Menü gelistet
