@@ -1,50 +1,56 @@
 #!/bin/bash
-
 # https://github.com/einstweilen/tvmenu
-# 2022-12-27
+# 2022-12-29
+
 
 if [ "$#" -eq 0 ]; then
-    menu_sender="data/menu_sender.txt"
-    if [ -f "$menu_sender" ]; then
-        cat "$menu_sender" "data/menu_sub.txt" # Senderliste im Menü ausgeben
-        exit
+    cached_sender="data/cached_sender.txt"
+    cached_servicemenu="data/cached_servicemenu.txt"
+    if [ -f "$cached_sender" ] && [ -f "$cached_servicemenu" ]; then
+        cat "$cached_sender" "$cached_servicemenu"
+        exit 0
     fi
 fi
 
 init(){
     DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )" # Pfad zum Skript
     cd "$DIR" || exit
-    data_dir="$DIR/data"
-    mkdir -p "$data_dir"
-    channels_file="$data_dir/channels.txt" # ZAPP Sender, gefiltert und vorformatiert
-    channels_backup_file="$data_dir/channels_backup.txt" # falls Server nicht erreichbar
-    channels_fixer="$data_dir/channels_fix.txt" # zusätzliche Sender z.B. Ersatz für Streams mit '@'
-    channels_all="$data_dir/channels_all.txt" # channels_file + channels_fixer
-    menu_sender="$data_dir/menu_sender.txt" # Sendernamensliste wie im Menü angezeigt
-    menu_sub="$data_dir/menu_sub.txt" # Einstellungssubmenü
-    channels_url="https://raw.githubusercontent.com/mediathekview/zapp/main/app/src/main/res/raw/channels.json"
+    DIR_DATA="$DIR/data"
+    mkdir -p "$DIR_DATA"
+    channels_file="$DIR_DATA/channels.txt" # ZAPP Sender, gefiltert und vorformatiert
+    channels_backup_file="$DIR_DATA/channels_backup.txt" # falls Server nicht erreichbar
+    channels_fixer="$DIR_DATA/channels_fix.txt" # zusätzliche Sender z.B. Ersatz für Streams mit '@'
+    channels_all="$DIR_DATA/channels_all.txt" # channels_file + channels_fixer
+    channels_menu_grup="$DIR_DATA/menu_gruppiert.txt" # Sendernamensliste MIT Gruppierung
+    channels_menu_ohne="$DIR_DATA/menu_ohne.txt" # Sendernamensliste OHNE Gruppierung
+    cached_sender="$DIR_DATA/cached_sender.txt" # Sendernamensliste wie im Menü angezeigt
+    cached_servicemenu="$DIR_DATA/cached_servicemenu.txt" # Einstellungssubmenü
+    channels_url='https://raw.githubusercontent.com/mediathekview/zapp/main/app/src/main/res/raw/channels.json'
     pref_file='com.einstweilen.tvmenu'
 }
 
-pref_write(){
-    defaults write "$pref_file" "$1" "$2"
+get_player(){
+    defaults read "$pref_file" player 2>/dev/null || err=$?
+    if [ $err ]; then # bei Fehler Default wiederherstellen
+        defaults write "$pref_file" 'player' 'QuickTime'
+        echo 'QuickTime'
+    fi
 }
 
-pref_read(){
-    defaults read "$pref_file" "$1" 2>/dev/null
-}
-
-pref_init(){
-    pref_write 'player' 'QuickTime'
-    pref_write 'submenus' 'True'
+get_submenu(){
+    defaults read "$pref_file" submenus 2>/dev/null || err=$?
+    if [ $err ]; then # bei Fehler Default wiederherstellen
+        defaults write "$pref_file" 'submenus' 'an'
+        echo 'aus'
+    fi
 }
 
 check_VLC(){
-    mdfind kind:application -name 'VLC' 2>/dev/null | grep -q "VLC.app" && return 0 || return 1
+    mdfind kind:application -name 'VLC' 2>/dev/null | grep -q 'VLC.app' && return 0 || return 1
 }
 
-close_player(){
-    if [[ "$1" == "QuickTime" ]]; then
+close_player_windows(){
+    if [[ "$1" == 'QuickTime' ]]; then
         osascript -e 'tell application "QuickTime Player" to close every window' >> /dev/null 2>&1
     else
         osascript -e 'tell application "VLC" to close every window' >> /dev/null 2>&1
@@ -57,9 +63,9 @@ stream_abspielen(){
         sender="${channel%|*}"
         url="${channel##*|}"
         if [ "$sender" == "$1" ]; then
-            player="$(pref_read 'player')"
-            close_player "$player"
-            if [[ "$player" == "QuickTime" ]]; then
+            player="$(get_player)"
+            close_player_windows "$player"
+            if [[ "$player" == 'QuickTime' ]]; then
                 open -a 'QuickTime Player.app' -u "$url"
             else
                 open -a 'VLC.app' -u "$url"
@@ -86,7 +92,10 @@ get_channels(){
                         u=${url_rw[i]}; u=${u#*"$t"} ; u=${u:0:$((${#u} - 2))}
                         if [[ ! "$u" == *@* ]]; then # nur wenn kein @ in der StreamURL
                             n=${n//\\u00ad/} # Weiches Trennzeichen im Sendernamen entfernen
-                            echo "$n|$u" >> "$channels_file" # Sendername|StreamURL
+                            url_test=$(curl -sL "$u") 
+                            if grep -q EXTM3U <<< "$url_test"; then
+                                echo "$n|$u" | iconv -f UTF-8 -t UTF-8-MAC >> "$channels_file"
+                            fi
                         fi
                     done
                 else
@@ -105,116 +114,129 @@ get_channels(){
         fi
 
         cat "$channels_file" "$channels_fixer" | sort -f  > "$channels_all"
-        rm -f "$menu_sender" # erzwingt Menü Neugenerierung 
+        rm -f "$cached_sender" # erzwingt Menü Neugenerierung 
     fi
     unset channels
     IFS=$'\n' read -d '' -r -a channels < "$channels_all"
 }
 
 channels_update(){
-    if [ ! -f "$channels_all" ]; then
-        rm -f "$channels_all"
-        get_channels
-    fi
-    menu_ausgabe
+    # fehlende Datei erzwingen Neugenerierung
+    rm -f "$channels_all"
+    rm -f "$channels_file"
+    rm -f "$channels_menu_grup"
+    rm -f "$channels_menu_ohne"
+    menu_ausgeben
 }
 
-menu_ausgabe(){
+menu_ausgeben(){
     update_sendermenu
     update_servicemenu
-    cat "$menu_sender" "$menu_sub"
+    cat "$cached_sender" "$cached_servicemenu"
 }
 
 update_sendermenu(){
-    # anzeigbare Sender ermitteln
-    unset menu_items  # Inhalt der Sendermenüs
-    unset sender_menu  # Sender die im Menü angezeigt werden
-    unset sender_gruppen  # Lokalsender NDR Nds, NDR HH, NDR SH usw.
+    if [ ! -f "$channels_menu_grup" ] || [ ! -f "$channels_menu_ohne" ] || [ ! -f "$cached_sender" ]; then
+        # anzeigbare Sender ermitteln
+        unset menu_items  # Inhalt der Sendermenüs
+        unset sender_menu  # Sender die im Menü angezeigt werden
+        unset sender_gruppen  # Lokalsender NDR Nds, NDR HH, NDR SH usw.
+        get_channels
+        for channel in "${channels[@]}"; do
+            sender="${channel%|*}"
+            url="${channel##*|}"
+            sendername="$sender"
+            sender_menu+=("$sendername")
+            sender_gruppen+=("${sendername%% *}") # erstes Wort des Namens als Gruppenkennung
+        done
 
-    get_channels
-    for channel in "${channels[@]}"; do
-        sender="${channel%|*}"
-        url="${channel##*|}"
-        sendername="$sender"
-        sender_menu+=("$sendername")
-        sender_gruppen+=("${sendername%% *}") # erstes Wort des Namens als Gruppenkennung
-    done
-    IFS=$'\n' sender_menu=($(sort -f <<<"${sender_menu[*]}")); unset IFS
-    IFS=$'\n' sender_gruppen=($(sort -f <<<"${sender_gruppen[*]}")); unset IFS
-    # Sendergruppen anhand Mehrfachnennungen ermitteln
-    submenu=$(pref_read 'submenus')
-    if [[ $submenu == true ]]; then 
+        # Sendermenüs mit Gruppierung erzeugen
+        IFS=$'\n' sender_menu=($(sort -f <<<"${sender_menu[*]}")); unset IFS
+        IFS=$'\n' sender_gruppen=($(sort -f <<<"${sender_gruppen[*]}")); unset IFS
+        # Sendergruppen anhand Mehrfachnennungen ermitteln
         gruppen_min=2 # Sendergruppe beginnt ab 2 Sendern in Sendergruppe
-    else
-        gruppen_min=10 # zeige Submenü ab 10 Sendern in Sendergruppe - quasi ausgeschaltet
-    fi
-    unset gruppen_submenu # Sendergruppen mit eigenem Submenü
-    temp="" ; temp_c=0
-    for ((i=0;i<${#sender_gruppen[*]}; i++)); do
-        if [[ ${sender_gruppen[i]} == "$temp" ]]; then
-            ((temp_c++))
-        else
-            temp="${sender_gruppen[i]}"
-            temp_c=1
-        fi
-        if [[ temp_c -ge gruppen_min ]] && [[ ! " ${gruppen_submenu[*]} " =~ ${sender_gruppen[i]} ]]; then
-            gruppen_submenu+=("${sender_gruppen[i]}")
-        fi
-    done
+        unset gruppen_submenu # Sendergruppen mit eigenem Submenü
+        temp="" ; temp_c=0
+        for ((i=0;i<${#sender_gruppen[*]}; i++)); do
+            if [[ ${sender_gruppen[i]} == "$temp" ]]; then
+                ((temp_c++))
+            else
+                temp="${sender_gruppen[i]}"
+                temp_c=1
+            fi
+            if [[ temp_c -ge gruppen_min ]] && [[ ! " ${gruppen_submenu[*]} " =~ ${sender_gruppen[i]} ]]; then
+                gruppen_submenu+=("${sender_gruppen[i]}")
+            fi
+        done
 
-    # Senderlistenmenu
-    sender_submenu=""
-    submenu_aktiv=false
-    sender_menu+=("----")
-    gruppe_aktuell=""
-    for sendername in "${sender_menu[@]}"; do
-        gruppe="${sendername%% *}"
-        if [[ " ${gruppen_submenu[*]} " =~ ${gruppe} ]]; then
-            if [[ ${gruppe} != "${gruppe_aktuell}" ]]; then
+        # Senderlistenmenu
+        sender_submenu=""
+        submenu_aktiv=false
+        sender_menu+=('----') # Navigationstrenner nach letztem Sender einfügen
+        gruppe_aktuell=""
+        for sendername in "${sender_menu[@]}"; do
+            gruppe="${sendername%% *}"
+            if [[ " ${gruppen_submenu[*]} " =~ ${gruppe} ]]; then
+                if [[ ${gruppe} != "${gruppe_aktuell}" ]]; then
+                    if [[ $submenu_aktiv == true ]]; then
+                        menu_items+=("${sender_submenu}")
+                        submenu_aktiv=false
+                    fi
+                    sender_submenu="SUBMENU|${gruppe}"
+                    gruppe_aktuell="$gruppe"
+                    submenu_aktiv=true
+                fi
+                sender_submenu="${sender_submenu}|${sendername}"
+            else
                 if [[ $submenu_aktiv == true ]]; then
                     menu_items+=("${sender_submenu}")
                     submenu_aktiv=false
+                    menu_items+=("${sendername}")
+                else
+                    menu_items+=("${sendername}")
                 fi
-                sender_submenu="SUBMENU|${gruppe}"
-                gruppe_aktuell="$gruppe"
-                submenu_aktiv=true
             fi
-            sender_submenu="${sender_submenu}|${sendername}"
-        else
-            if [[ $submenu_aktiv == true ]]; then
-                menu_items+=("${sender_submenu}")
-                submenu_aktiv=false
-                menu_items+=("${sendername}")
-            else
-                menu_items+=("${sendername}")
-            fi
-        fi
-    done
-    printf "%s\n" "${menu_items[@]}" > "$menu_sender"
+        done
+        printf "%s\n" "${menu_items[@]}" > "$channels_menu_grup"
+
+        # Sendermenü ohne Gruppierung erzeugen
+        printf "%s\n" "${sender_menu[@]}" > "$channels_menu_ohne"
+    fi
+    sender_menu_aktivieren
+}
+
+sender_menu_aktivieren(){
+    submenu=$(get_submenu)
+    if [[ $submenu == 'an' ]]; then
+         cp "$channels_menu_grup" "$cached_sender" 2>/dev/null || :
+    else
+         cp "$channels_menu_ohne" "$cached_sender" 2>/dev/null || :
+    fi
+
 }
 
 update_servicemenu(){
     # Einstellungssubmenü
     if check_VLC ; then
         # Playerauswahl nur anzeigen, wenn VLC installiert ist
-        player=$(pref_read 'player')
-        if [[ $player == "QuickTime" ]]; then
-            playermenuitem="VLC verwenden"
+        player=$(get_player)
+        if [[ $player == 'QuickTime' ]]; then
+            playermenuitem='VLC verwenden'
         else
-            playermenuitem="QT Player verwenden"
+            playermenuitem='QT Player verwenden'
         fi
     else # VLC Option ausgrauen
-        playermenuitem="DISABLED|VLC verwenden"
+        playermenuitem='DISABLED|VLC verwenden'
     fi
 
-    submenu=$(pref_read 'submenus')
-    if [[ $submenu == true ]]; then
-        submenuitem="Submenüs ausschalten"
+    submenu=$(get_submenu)
+    if [[ $submenu == 'an' ]]; then
+        submenuitem='Gruppierung ausschalten'
     else
-        submenuitem="Submenüs einschalten"
+        submenuitem='Sender gruppieren'
     fi
     servicemenu="SUBMENU|Einstellungen|${submenuitem}|${playermenuitem}|----|Senderliste aktualisieren"
-    printf "%s\n" "$servicemenu" > "$menu_sub"
+    printf "%s\n" "$servicemenu" > "$cached_servicemenu"
 }
 
 init
@@ -227,30 +249,33 @@ if [ "$#" -gt 0 ]; then
             ;;
         'VLC verwenden')
             if check_VLC ; then
-                pref_write 'player' 'VLC'
+                defaults write "$pref_file" 'player' 'VLC'
             fi
-            menu_ausgabe
             ;;
         'QT Player verwenden')
-            pref_write 'player' 'QuickTime'
-            menu_ausgabe
+            defaults write "$pref_file" 'player' 'QuickTime'
             ;;
-        'Submenüs ausschalten')
-            pref_write 'submenus' 'false'
-            menu_ausgabe
+        'Gruppierung ausschalten')
+            defaults write "$pref_file" 'submenus' 'aus'
             ;;
-        'Submenüs einschalten')
-            pref_write 'submenus' 'true'
-            menu_ausgabe
-            ;;
-        'debug')
-            check_VLC
+        'Sender gruppieren')
+            defaults write "$pref_file" 'submenus' 'an'
             ;;
         *)
             stream_abspielen "$parameter"
+            exit 0
             ;;
     esac
+    if [[ "$parameter" == 'VLC verwenden' ]] || [[ "$parameter" == 'QT Player verwenden' ]]; then
+        update_servicemenu
+    fi
+    if [[ "$parameter" == 'Sender gruppieren' ]] || [[ "$parameter" == 'Gruppierung ausschalten' ]]; then
+        update_servicemenu
+        sender_menu_aktivieren
+    fi
+    cat "$cached_sender" "$cached_servicemenu"
+    exit 0
 else
-    menu_ausgabe
+    menu_ausgeben
 fi
 exit 0

@@ -1,0 +1,32 @@
+3sat
+ARD-alpha
+ARTE
+BR Nord
+BR Süd
+Das Erste
+Deutsche Welle
+Deutsche Welle+
+HR
+KiKA
+MDR Sachsen
+MDR Sachsen-Anhalt
+MDR Thüringen
+NDR Hamburg
+NDR Mecklenburg-Vorpommern
+NDR Niedersachsen
+NDR Schleswig-Holstein
+ONE
+Parlamentsfernsehen Kanal 1
+Parlamentsfernsehen Kanal 2
+phoenix
+Radio Bremen
+rbb Fernsehen Berlin
+rbb Fernsehen Brandenburg
+SWR Baden-Württemberg
+SWR Rheinland-Pfalz
+tagesschau24
+WDR
+ZDF
+ZDFinfo
+ZDFneo
+----
