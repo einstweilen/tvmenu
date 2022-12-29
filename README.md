@@ -75,6 +75,7 @@ Durch Filecaching und Darstellung des Menüs durch ein kleines Shellskript, lie�
 Aus reiner Bequemlichkeit und da **TV Menü** mit der letzten Python Version funktional vollständig war, wurde das Pythonskript 1 zu 1 in ein Shellskript umgeschrieben, das jetzt für alles zuständig ist und das vor allem als 'pure bash' auf jedem Mac laufen sollte.
 
 ## History
+* 2022-12-29 FIX Einstellungsdatei, Umlaute, Streams vor Übernahme prüfen
 * 2022-12-27 Playerauswahl nur wenn VLC installiert ist, SWR Sendergruppe wieder im Menü gelistet
 * 2022-12-26 Python durch funktionsidentisches Bash Skript ersetzt
 * 2022-12-23 subprocess durch plistlib ersetzt
