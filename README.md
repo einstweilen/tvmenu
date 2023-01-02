@@ -5,6 +5,9 @@
 
 Die aktuellste Version von **TV Menü** kann unter [Releases](https://github.com/einstweilen/tvmenu/releases/) heruntergeladen werden.
 
+Wer bereits xBar verwendet kann statt der Stand-Alone-Version von **TV Menü** auch die funktionsidentische xBar-Plugin-Version herunterladen.
+**[xBar Plugin Download und Anleitung](#xbar-plugin)**
+
 ## Feature
 * über 30 Sender im Livestream
 * Sender mit mehreren lokalen Sendehäusern werden in Submenüs zusammengefaßt
@@ -65,6 +68,12 @@ Ist VLC nicht installiert, ist "VLC verwenden" im Submenü ausgegraut.
 ![](/img/einstellungen3.png)
 ### Senderliste aktualisieren
 **TV Menü** verwendet die Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  eine neue Liste von der ZAPP Projektseite geladen werden.
+
+## xBar Plugin
+Das [Plugin herunterladen](https://github.com/einstweilen/tvmenu/blob/main/tvmenu.1d.sh) und in das xbar/plugins Verzeichnis kopieren. 
+Sollte eine "Nicht ausführbar" Fehlermeldung angezeigt werden, im Terminal `chmod +x tvmenu.1d.sh` eingeben.
+
+![](/img/xbar-plugin.png)
 
 ## Randnotiz
 ### Umstellung von Python auf Bash
