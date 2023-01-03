@@ -1,12 +1,12 @@
 # TV Menü für macOS
-**TV Menü** ist ein Menulet für macOS, mit dem sich die Streams der öffentlich-rechtlichen Sender aus der Menüleiste heraus öffnen lassen.
+**TV Menü** ist ein Stand-Alone-Menulet für macOS, mit dem sich die Streams der öffentlich-rechtlichen Sender aus der Menüleiste heraus öffnen lassen.
 
 ![](/img/menu1.png)
 
-Die aktuellste Version von **TV Menü** kann unter [Releases](https://github.com/einstweilen/tvmenu/releases/) heruntergeladen werden.
+Die aktuellste Version von **TV Menü** kann unter **[Releases](https://github.com/einstweilen/tvmenu/releases/)** heruntergeladen werden.
 
-Wer bereits xBar verwendet kann statt der Stand-Alone-Version von **TV Menü** auch die funktionsidentische xBar-Plugin-Version herunterladen.
-**[xBar Plugin Download und Anleitung](#xbar-plugin)**
+Wer bereits [xBar](https://xbarapp.com/) verwendet kann statt der Stand-Alone-Version von **TV Menü** auch die funktionsidentische xBar-Plugin-Version herunterladen.
+**[xBar Plugin Download und Anleitung](#tv-men%C3%BC-als-xbar-plugin)**
 
 ## Feature
 * über 30 Sender im Livestream
@@ -69,21 +69,22 @@ Ist VLC nicht installiert, ist "VLC verwenden" im Submenü ausgegraut.
 ### Senderliste aktualisieren
 **TV Menü** verwendet die Liste der Senderadressen aus der zu Mediathekview gehörenden [ZAPP](https://github.com/mediathekview/zapp) Android App. Sollten sich die Senderadressen ändern, kann mit _Senderliste aktualisieren_  eine neue Liste von der ZAPP Projektseite geladen werden.
 
-## xBar Plugin
-Das [Plugin herunterladen](https://github.com/einstweilen/tvmenu/blob/main/tvmenu.1d.sh) und in das xbar/plugins Verzeichnis kopieren. 
-Sollte eine "Nicht ausführbar" Fehlermeldung angezeigt werden, im Terminal `chmod +x tvmenu.1d.sh` eingeben.
+## TV Menü als xBar Plugin
+Das [Plugin herunterladen](https://github.com/einstweilen/tvmenu/blob/main/tvmenu.1d.sh) und in das xbar/plugins Verzeichnis kopieren. Das Plugin Verzeichnis läßt sich aus dem xBar Submenü öffnen
 
+![](/img/xbarpluginfolder.png)
+
+Sollte eine "Nicht ausführbar" Fehlermeldung angezeigt werden, im Terminal `chmod +x tvmenu.1d.sh` eingeben.
+![](/img/xbarerror.png)
+
+**TV Menü** steht nun im xBar Plugin Browser zur Verfügung
 ![](/img/xbar-plugin.png)
 
-## Randnotiz
 ### Umstellung von Python auf Bash
-Bis zur Version 1.2.1 ([Download der letzen Python Version](https://github.com/einstweilen/tvmenu/releases/tag/1.2.1)) wurde für **TV Menü** ein Pythonskript verwendet. Platypus, der Wrapper für das Menulet, führte das Skript bei jeder Interaktion neu aus und hat dafür auch Python jedes Mal gestartet, was zu einer sichtbaren Verzögerung beim Menüaufklappen führte.
-
-Durch Filecaching und Darstellung des Menüs durch ein kleines Shellskript, ließ sich das zwar beheben, machte aber zwei Skripte notwendig: Shellskript für die Auslieferung des Menüs und Pythonskript für die Generierung des Menü aus den Senderdaten und das Handling des Videoplayers).
-
-Aus reiner Bequemlichkeit und da **TV Menü** mit der letzten Python Version funktional vollständig war, wurde das Pythonskript 1 zu 1 in ein Shellskript umgeschrieben, das jetzt für alles zuständig ist und das vor allem als 'pure bash' auf jedem Mac laufen sollte.
+Bis zur Version 1.2.1 ([Download der letzen Python Version](https://github.com/einstweilen/tvmenu/releases/tag/1.2.1)) wurde für **TV Menü** ein Pythonskript verwendet, neuere Versionen wurden 1 zu 1 in ein Shellskript umgeschrieben.
 
 ## History
+* 2023-01-02 Version als xBar Plugin ergänzt
 * 2022-12-29 FIX Einstellungsdatei, Umlaute, Streams vor Übernahme prüfen
 * 2022-12-27 Playerauswahl nur wenn VLC installiert ist, SWR Sendergruppe wieder im Menü gelistet
 * 2022-12-26 Python durch funktionsidentisches Bash Skript ersetzt
