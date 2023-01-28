@@ -84,6 +84,7 @@ Sollte eine "Nicht ausführbar" Fehlermeldung angezeigt werden, im Terminal `chm
 Bis zur Version 1.2.1 ([Download der letzen Python Version](https://github.com/einstweilen/tvmenu/releases/tag/1.2.1)) wurde für **TV Menü** ein Pythonskript verwendet, neuere Versionen wurden 1 zu 1 in ein Shellskript umgeschrieben.
 
 ## History
+* 2023-01-28 xBar Plugin auf SQLite umgestellt, [zusätzliche Quellen von KodiNerds](https://github.com/jnk22/entertain-iptv) ergänzt
 * 2023-01-02 Version als xBar Plugin ergänzt
 * 2022-12-29 FIX Einstellungsdatei, Umlaute, Streams vor Übernahme prüfen
 * 2022-12-27 Playerauswahl nur wenn VLC installiert ist, SWR Sendergruppe wieder im Menü gelistet
