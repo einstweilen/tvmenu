@@ -1,78 +1,57 @@
 #!/usr/bin/env bash
 # https://github.com/einstweilen/tvmenu
-# 2023-01-02
+# 2023-01-28
 
 #  <xbar.title>TV Menü</xbar.title>
-#  <xbar.version>v1.0</xbar.version>
+#  <xbar.version>v2</xbar.version>
 #  <xbar.author>Einstweilen</xbar.author>
 #  <xbar.author.github>Einstweilen</xbar.author.github>
 #  <xbar.desc>TV Streams der ÖR Sender / German public-service television broadcasters</xbar.desc>
 #  <xbar.image>https://i.imgur.com/5vjg4ln.png</xbar.image>
 #  <xbar.dependencies>bash</xbar.dependencies>
-#  <xbar.abouturl>https://github.com/einstweilen/tvmenu</xbar.abouturl>
+#  <xbar.abouturl>https://github.com/einstweilen/tvmenu_xbar</xbar.abouturl>
 
-echo "📺" # echo "TV" Menu Icon/Text
-echo "---"
+check_database(){
+    sqlite3 .tvmenu.db "CREATE TABLE IF NOT EXISTS senderlisten (liste TEXT, sendername TEXT, url TEXT UNIQUE);"
+            # Senderlistenkürzel, Sendername, StreamURL
 
-if [ "$#" -eq 0 ]; then
-    cached_sender="data/cached_sender.txt"
-    cached_servicemenu="data/cached_servicemenu.txt"
-    if [ -f "$cached_sender" ] && [ -f "$cached_servicemenu" ]; then
-        cat "$cached_sender" "$cached_servicemenu"
-        exit 0
+    sqlite3 .tvmenu.db "CREATE TABLE IF NOT EXISTS menuitems (menuart TEXT, liste TEXT, item TEXT, command TEXT);"
+            # Menuart, Kürzel der Senderliste, im Menü angezeigter Text, Befehle bei Auswahl 
+            # menuart: Sender G=gruppiert, N=nicht gruppiert  
+            # menuart: L=Senderlisten, S=Servicemenü
+    
+    sqlite3 .tvmenu.db "CREATE TABLE IF NOT EXISTS settings (key TEXT UNIQUE, value TEXT);"
+            # key: senderliste v: Kürzel der aktuell angezeigten Liste
+            # key: player QuickTime|VLC, gruppierung an|aus
+
+    if [ $(sqlite3 .tvmenu.db "SELECT COUNT(*) FROM settings;") -lt 3 ] ; then
+        settings 'senderliste' 'oerr'
+        settings 'player' 'QuickTime'
+        settings 'gruppierung' 'an'
     fi
-fi
 
-init(){
-    DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-    cd "$DIR" || exit
-    DIR_DATA="$DIR/tvmenu_data"
-    mkdir -p "$DIR_DATA"
-    channels_file="$DIR_DATA/channels.txt"
-    channels_fixer="$DIR_DATA/channels_fix.txt"
-    channels_all="$DIR_DATA/channels_all.txt"
-    channels_menu_grup="$DIR_DATA/menu_gruppiert.txt"
-    channels_menu_ohne="$DIR_DATA/menu_ohne.txt"
-    cached_sender="$DIR_DATA/cached_sender.txt"
-    cached_servicemenu="$DIR_DATA/cached_servicemenu.txt"
-    channels_url='https://raw.githubusercontent.com/mediathekview/zapp/main/app/src/main/res/raw/channels.json'
-    pref_file='com.einstweilen.tvmenu'
-    item_selected="bash='$0' terminal=false refresh=true param1="
-}
-
-channels_fixes(){
-echo "
-tagesschau24|https://tagesschau.akamaized.net/hls/live/2020115/tagesschau/tagesschau_1/master.m3u8
-NDR Hamburg|https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_hh/master.m3u8
-NDR Niedersachsen|https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8
-NDR Mecklenburg-Vorpommern|https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_mv/master.m3u8
-NDR Schleswig-Holstein|https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_sh/master.m3u8
-SWR Baden-Württemberg|https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8
-SWR Rheinland-Pfalz|https://swrrpd-hls.akamaized.net/hls/live/2018676/swrrpd/master.m3u8
-" >> "$channels_fixer"
-}
-
-get_player(){
-    defaults read "$pref_file" player 2>/dev/null || err=$?
-    if [ "$err" ]; then
-        defaults write "$pref_file" 'player' 'QuickTime'
-        echo 'QuickTime'
+    if [ $(sqlite3 .tvmenu.db "SELECT COUNT(*) FROM senderlisten;") -eq 0 ] ; then
+        get_channels
+        update_sendermenu
+        update_settings_submenu
     fi
 }
 
-get_submenu(){
-    defaults read "$pref_file" submenus 2>/dev/null || err=$?
-    if [ "$err" ]; then
-        defaults write "$pref_file" 'submenus' 'an'
-        echo 'aus'
-    fi
+settings(){
+    if [ -n "$1" ]; then
+        if [ -n "$2" ]; then 
+            sqlite3 .tvmenu.db "REPLACE INTO settings VALUES (\"$1\", \"$2\");"
+        else
+            sqlite3 .tvmenu.db "SELECT value FROM settings WHERE key=\"$1\";"
+        fi
+     fi
 }
 
 check_VLC(){
     mdfind kind:application -name 'VLC' 2>/dev/null | grep -q 'VLC.app' && return 0 || return 1
 }
 
-close_player_windows(){
+close_player_windows(){ 
     if [[ "$1" == 'QuickTime' ]]; then
         osascript -e 'tell application "QuickTime Player" to close every window' >> /dev/null 2>&1
     else
@@ -81,100 +60,121 @@ close_player_windows(){
 }
 
 stream_abspielen(){
-    get_channels
-    for channel in "${channels[@]}"; do
-        sender="${channel%|*}"
-        url="${channel##*|}"
-        if [ "$sender" == "$1" ]; then
-            player="$(get_player)"
-            close_player_windows "$player"
-            if [[ "$player" == 'QuickTime' ]]; then
-                open -a 'QuickTime Player.app' -u "$url"
-            else
-                open -a 'VLC.app' -u "$url"
-            fi
-            exit 0
+    url=$(sqlite3 .tvmenu.db "SELECT url FROM senderlisten WHERE liste=\"$(settings senderliste)\" AND sendername=\"$1\";")
+    if [ ! -z $url ]; then
+        player="$(settings player)"
+        close_player_windows "$player"
+        if [[ "$player" == 'QuickTime' ]]; then
+            open -a 'QuickTime Player.app' -u "$url"
+        else
+            open -a 'VLC.app' -u "$url"
         fi
-    done
-   
-    exit 1
+        exit 0
+    fi
+    exit 1 # kein passender Senderstream in der DB gefunden
 }
 
 get_channels(){
-    if [ ! -f "$channels_all" ]; then
-        if [ ! -f "$channels_file" ]; then
-            raw=$(curl -s --max-time 9 "$channels_url")
-            if [ "$?" -eq 0 ]; then
-                IFS=$'\n' ch_rw=($(grep '"name"' <<< "$raw")) ; unset IFS
-                IFS=$'\n' url_rw=($(grep '"stream_url"' <<< "$raw")) ; unset IFS
-                if [[ ${#ch_rw[*]} -eq ${#url_rw[*]} ]] && [ ${#ch_rw[*]} -gt 0 ]; then
-                    t='": "'
-                    for ((i=0;i<${#ch_rw[*]}; i++)); do
-                        n=${ch_rw[i]}; n=${n#*"$t"} ; n=${n:0:$((${#n} - 2))}
-                        u=${url_rw[i]}; u=${u#*"$t"} ; u=${u:0:$((${#u} - 2))}
-                        if [[ ! "$u" == *@* ]]; then
-                            n=${n//\\u00ad/}
-                            url_test=$(curl -sL "$u") 
-                            if grep -q EXTM3U <<< "$url_test"; then
-                                echo "$n|$u" | iconv -f UTF-8 -t UTF-8-MAC >> "$channels_file"
-                            fi
-                        fi
-                    done
-                else
-                    if [ ! -f "$channels_file" ] && [ -f "$channels_file.bu" ]; then
-                        mv -f "$channels_file.bu" "$channels_file"
-                    else
-                        echo "Updatefehler" > "$channels_file"
-                    fi
-                fi
-            else
-                if [ ! -f "$channels_file" ] && [ -f "$channels_file.bu" ]; then
-                    mv -f "$channels_file.bu" "$channels_file"
-                else
-                     echo "Updatefehler" > "$channels_file"
-                fi
-            fi
-        fi
-        if [ ! -f "$channels_fixer" ]; then
-            channels_fixes
-        fi
-        cat "$channels_file" "$channels_fixer" | sort -f  > "$channels_all"
-        rm -f "$cached_sender"
+    if [ $(sqlite3 .tvmenu.db "SELECT COUNT(*) FROM senderlisten") -eq 0 ]; then
+        get_channels_zapp
+        get_channels_konerd
+        # Doppelte und nicht abspielbare Streams löschen
+        sqlite3 .tvmenu.db "DELETE FROM senderlisten WHERE rowid NOT IN (SELECT min(rowid) FROM senderlisten GROUP BY url);"
+        sqlite3 .tvmenu.db "DELETE FROM senderlisten WHERE url LIKE '%@%';"
     fi
-    unset channels
-    IFS=$'\n' read -d '' -r -a channels < "$channels_all"
 }
 
-channels_update(){
-    rm -f "$channels_all"
-    mv -f "$channels_file" "$channels_file.bu"
-    rm -f "$cached_sender"
-    rm -f "$channels_menu_grup"
-    rm -f "$channels_menu_ohne"
-    menu_ausgeben
+get_channels_zapp(){
+    ch_url='https://raw.githubusercontent.com/mediathekview/zapp/main/app/src/main/res/raw/channels.json'
+    raw=$(curl -s --max-time 9 "$ch_url")
+    if [ "$?" -eq 0 ]; then
+        IFS=$'\n' ch_raw=($(grep '"name"' <<< "$raw")) ; unset IFS
+        IFS=$'\n' url_raw=($(grep '"stream_url"' <<< "$raw")) ; unset IFS
+        # Sicherheitsabfrage falls beim Parsen Fehler aufgetreten sind
+        if [[ ${#ch_raw[*]} -eq ${#url_raw[*]} ]] && [ ${#ch_raw[*]} -gt 0 ]; then
+            t='": "' # Trennzeichen
+            for ((i=0;i<${#ch_raw[*]}; i++)); do
+                n=${ch_raw[i]}; n=${n#*"$t"} ; n=${n:0:$((${#n} - 2))}
+                u=${url_raw[i]}; u=${u#*"$t"} ; u=${u:0:$((${#u} - 2))}
+                n=${n//\\u00ad/} # Shy bedingter Trennstrich entfernen 
+                sqlite3 .tvmenu.db "INSERT OR IGNORE INTO senderlisten VALUES (\"oerr\", \"${n}\", \"${u}\");"
+            done
+        fi
+    fi
+
+    # Ersatz für ZAPP Streams die nicht mit QT funktionieren
+    declare -a fixes=(
+        'tagesschau24|https://tagesschau.akamaized.net/hls/live/2020115/tagesschau/tagesschau_1/master.m3u8'
+        'NDR Hamburg|https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_hh/master.m3u8'
+        'NDR Niedersachsen|https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8'
+        'NDR Mecklenburg-Vorpommern|https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_mv/master.m3u8'
+        'NDR Schleswig-Holstein|https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_sh/master.m3u8'
+        'SWR Baden-Württemberg|https://swrbwd-hls.akamaized.net/hls/live/2018672/swrbwd/master.m3u8'
+        'SWR Rheinland-Pfalz|https://swrrpd-hls.akamaized.net/hls/live/2018676/swrrpd/master.m3u8'
+        )
+    for fix in "${fixes[@]}"; do
+        sqlite3 .tvmenu.db "INSERT OR IGNORE INTO senderlisten VALUES (\"oerr\", \"${fix%%|*}\", \"${fix##*|}\");"
+    done
 }
 
-menu_ausgeben(){
+get_channels_konerd(){
+    declare -a kodinerds_channels=(
+        'sonst|https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_main.m3u'
+        'lokal|https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_local.m3u'
+        'ach|https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_atch.m3u'
+        'usuk|https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_usuk.m3u'
+        'inter|https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_international.m3u'
+        )
+    for kodinerds in "${kodinerds_channels[@]}"; do
+        kn_liste="${kodinerds%|*}"
+        kn_url="${kodinerds##*|}"
+        ch_raw=$(curl -s "$kn_url")
+        IFS=$'\n'
+            ch_info=($(grep "^#EXTINF" <<<"$ch_raw"))
+            ch_url=($(grep "^http" <<<"$ch_raw"))
+        unset IFS
+        if [ ${#ch_info[*]} -eq ${#ch_url[*]} ]; then
+            for ((i = 0 ; i < ${#ch_url[*]} ; i++)); do
+                info_name=$(cut -d'"' -f 2 <<<"${ch_info[i]}")
+                sqlite3 .tvmenu.db "INSERT OR IGNORE INTO senderlisten VALUES (\"${kn_liste}\", \"${info_name}\", \"${ch_url[i]}\");"
+            done
+        fi
+    done
+    # Fix für Gruppierungserkennug
+    sqlite3 .tvmenu.db "UPDATE senderlisten SET sendername = REPLACE(sendername, 'Adult Swim', 'AdultSwim');"
+}
+
+force_update(){
+    sqlite3 .tvmenu.db "DELETE FROM senderliste;"
+    sqlite3 .tvmenu.db "DELETE FROM menuitems;"
+    get_channels
     update_sendermenu
-    update_servicemenu
-    cat "$cached_sender" "$cached_servicemenu"
 }
 
 update_sendermenu(){
-    if [ ! -f "$channels_menu_grup" ] || [ ! -f "$channels_menu_ohne" ] || [ ! -f "$cached_sender" ]; then
-        unset sender_menu 
-        unset sender_gruppen 
-        get_channels
+    sqlite3 .tvmenu.db "DELETE FROM menuitems;"
+    unset listen
+    IFS=$'\n' read -rd '' -a listen < <(sqlite3 .tvmenu.db "SELECT DISTINCT liste FROM senderlisten;");
+    unset IFS
+
+    for akt_senderliste in "${listen[@]}"; do
+        unset channels
+        unset sender_menu
+        IFS=$'\n' read -rd '' -a channels < <(sqlite3 .tvmenu.db "SELECT sendername FROM senderlisten WHERE liste=\"$akt_senderliste\" ORDER BY sendername COLLATE NOCASE;")
+        unset IFS
         for channel in "${channels[@]}"; do
             sender="${channel%|*}"
             url="${channel##*|}"
             sendername="$sender"
             sender_menu+=("$sendername")
-            sender_gruppen+=("${sendername%% *}")
         done
-        IFS=$'\n' sender_menu=($(sort -f <<<"${sender_menu[*]}")); unset IFS
-        IFS=$'\n' sender_gruppen=($(sort -f <<<"${sender_gruppen[*]}")); unset IFS
-        gruppen_min=2
+
+        unset sender_gruppen
+        IFS=$'\n'
+            sender_menu=($(sort -f <<<"${sender_menu[*]}"))
+            read -rd '' -a sender_gruppen < <(sqlite3 .tvmenu.db "SELECT SUBSTR(sendername, 1, INSTR(sendername, ' ')) FROM senderlisten GROUP BY SUBSTR(sendername, 1, INSTR(sendername, ' ')) HAVING COUNT(*) > 1;")
+        unset IFS
+
         unset gruppen_submenu
         temp="" ; temp_c=0
         for ((i=0;i<${#sender_gruppen[*]}; i++)); do
@@ -188,108 +188,130 @@ update_sendermenu(){
                 gruppen_submenu+=("${sender_gruppen[i]}")
             fi
         done
+
         gruppe_aktuell=""
-        the_menu="$channels_menu_grup"
-        rm -f "$the_menu"
-        item_selected="bash='$0' trim=false terminal=false refresh=true param1="
         for sendername in "${sender_menu[@]}"; do
             gruppe="${sendername%% *}"
-            if [[ " ${gruppen_submenu[*]} " =~ ${gruppe} ]]; then 
-                if [[ ${gruppe} != "${gruppe_aktuell}" ]]; then 
-                    echo "${gruppe}" >> "$the_menu"
+            if [[ " ${gruppen_submenu[*]} " =~ ${gruppe} ]]; then
+                if [[ ${gruppe} != "${gruppe_aktuell}" ]]; then
+                    sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('G', \"${akt_senderliste}\", \"${gruppe}\", '');"
                     gruppe_aktuell="$gruppe"
                 fi
-                echo "--${sendername#* } | $item_selected'${sendername}'" >> "$the_menu" 
+                item="--${sendername}"
+                command="$item_selected'${sendername}'"
+                sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('G', \"${akt_senderliste}\", \"${item}\", \"${command}\");"
             else
-                echo "${sendername} | $item_selected'${sendername}'" >> "$the_menu"
+                item="${sendername}"
+                command="$item_selected'${sendername}'"
+                sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('G', \"${akt_senderliste}\", \"${item}\", \"${command}\");"
             fi
+            item="${sendername}"
+            command="$item_selected'${sendername}'"
+            sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('N', \"${akt_senderliste}\", \"${item}\", \"${command}\");"
         done
-        echo '---'  >> "$the_menu"
-        the_menu="$channels_menu_ohne"
-        rm -f "$the_menu"
-        for sendername in "${sender_menu[@]}"; do
-            echo "${sendername} | $item_selected'${sendername}'"  >> "$the_menu"
-        done
-        echo '---'  >> "$the_menu"
-    fi
-    sender_menu_aktivieren
+    done
+    senderlisten_auswahl_anlegen
 }
 
-sender_menu_aktivieren(){
-    submenu=$(get_submenu)
-    if [[ $submenu == 'an' ]]; then
-         cp "$channels_menu_grup" "$cached_sender" 2>/dev/null || :
-    else
-         cp "$channels_menu_ohne" "$cached_sender" 2>/dev/null || :
-    fi
+senderlisten_auswahl_anlegen(){
+    sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('L', '', '---', '');"
+    sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('L', '', 'Senderlisten', '');"
+    IFS=$'\n'
+        for liste in $(sqlite3 .tvmenu.db "SELECT DISTINCT liste FROM senderlisten;"); do
+            command="${item_selected}list_${liste}"
+            # Senderlistenkürzel in Menüdarstellung ändern
+            liste=${liste/oerr/D ÖRR}
+            liste=${liste/sonst/D Sonstige}
+            liste=${liste/lokal/D lokal}
+            liste=${liste/ach/A CH}
+            liste=${liste/usuk/US UK}
+            liste=${liste/inter/International}
+            item="--${liste}"
+            sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('L', '', \"${item}\", \"${command}\");"
+        done
+    unset IFS
+    sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('L', '', '---', '');"
 }
 
-update_servicemenu(){
-   
-    the_menu="$cached_servicemenu"
-    echo "Einstellungen" > "$the_menu"
+update_settings_submenu(){
+    sqlite3 .tvmenu.db "DELETE FROM menuitems WHERE menuart='S';"
+
+    sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('S', '', 'Einstellungen', '');"
     if check_VLC ; then
-        player=$(get_player)
+        player=$(settings player)
         if [[ $player == 'QuickTime' ]]; then
-            echo "--VLC verwenden | $item_selected'VLC verwenden'" >> "$the_menu"
+            sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('S', '', '--VLC verwenden', \"$item_selected'VLC verwenden'\");"
         else
-            echo "--QT Player verwenden | $item_selected'QT Player verwenden'" >> "$the_menu"
+            sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('S', '', '--QT Player verwenden', \"$item_selected'QT Player verwenden'\");"
         fi
     else
-        echo "--VLC verwenden" >> "$the_menu"
+        sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('S', '', '--VLC verwenden', '');"
     fi
 
-    submenu=$(get_submenu)
+    submenu=$(settings gruppierung)
     if [[ $submenu == 'an' ]]; then
-        echo "--Gruppierung ausschalten | $item_selected'Gruppierung ausschalten'" >> "$the_menu"
+        sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('S', '', '--Gruppierung ausschalten', \"$item_selected'Gruppierung ausschalten'\");"
     else
-        echo "--Sender gruppieren | $item_selected'Sender gruppieren'" >> "$the_menu"
+        sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('S', '', '--Sender gruppieren', \"$item_selected'Sender gruppieren'\");"
     fi
-    echo "---"
-    echo "--Senderliste aktualisieren | $item_selected'Senderliste aktualisieren'" >> "$the_menu"
+    sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('S', '', '--Senderlisten aktualisieren', \"$item_selected'Senderlisten aktualisieren'\");"
 }
 
-init
+menu_ausgeben(){
+    submenu=$(settings gruppierung)
+    akt_senderliste=$(settings senderliste)
+    if [[ $submenu == 'an' ]]; then
+        menuart='G'
+    else
+        menuart='N'
+    fi
+    sqlite3 .tvmenu.db "SELECT item, command FROM menuitems WHERE menuart=\"$menuart\" AND liste=\"$akt_senderliste\";" # aktuelle Senderliste
+    sqlite3 .tvmenu.db "SELECT item, command FROM menuitems WHERE menuart='L';" # Submenü Senderlisten
+    sqlite3 .tvmenu.db "SELECT item, command FROM menuitems WHERE menuart='S';" # Submenü Servicemenu
+}
+
+# Main
+echo "📺" # echo "TV" # Menubar Icon/Text
+echo "---"
+
+item_selected="bash='$0' terminal=false refresh=true param1="
+check_database
+
+# Übergabeparameter auswerten
 if [ "$#" -gt 0 ]; then
     parameter="$*"
     case "$parameter" in
-        'Senderliste aktualisieren')
-            channels_update
-            exit 0
-            ;;
-        'Updatefehler')
-            channels_update
-            exit 0
+        'Senderlisten aktualisieren')
+            force_update
             ;;
         'VLC verwenden')
             if check_VLC ; then
-                defaults write "$pref_file" 'player' 'VLC'
+                settings 'player' 'VLC'
             fi
             ;;
         'QT Player verwenden')
-            defaults write "$pref_file" 'player' 'QuickTime'
+            settings 'player' 'QuickTime'
             ;;
         'Gruppierung ausschalten')
-            defaults write "$pref_file" 'submenus' 'aus'
+            settings 'gruppierung' 'aus'
             ;;
         'Sender gruppieren')
-            defaults write "$pref_file" 'submenus' 'an'
+            settings 'gruppierung' 'an'
+            ;;
+        [l][i][s][t]*)
+            settings 'senderliste' "${parameter##*_}"
             ;;
         *)
             stream_abspielen "$parameter"
-            exit 0
+            exit 0 # Menuausgabe nicht notwendig
             ;;
     esac
     if [[ "$parameter" == 'VLC verwenden' ]] || [[ "$parameter" == 'QT Player verwenden' ]]; then
-        update_servicemenu
+        update_settings_submenu
     fi
     if [[ "$parameter" == 'Sender gruppieren' ]] || [[ "$parameter" == 'Gruppierung ausschalten' ]]; then
-        update_servicemenu
-        sender_menu_aktivieren
+        update_settings_submenu
     fi
-    cat "$cached_sender" "$cached_servicemenu"
-    exit 0
-else
-    menu_ausgeben
 fi
+menu_ausgeben
 exit 0
