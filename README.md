@@ -87,7 +87,7 @@ Sollte eine "Nicht ausführbar" Fehlermeldung angezeigt werden, im Terminal `chm
 ![](/img/xbar-plugin.png)
 
 ### Senderlistenauswahl
-Über das Senderlisten-Submenü kann die jeweils aktive Senderlisten ausgewählt werden.
+Über das Senderlisten-Submenü kann die jeweils aktive Senderliste ausgewählt werden.
 ![](/img/xbar-listen.png)
 
 | Senderliste  | Beschreibung  | Quelle  | 
