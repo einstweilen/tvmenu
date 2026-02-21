@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # https://github.com/einstweilen/tvmenu
-# 2026-02-17
+# 2026-02-20
 
 #  <xbar.title>TV Menü</xbar.title>
 #  <xbar.version>v2</xbar.version>
@@ -25,7 +25,7 @@ check_database(){
             'oerr,D ÖRR,zapp,https://raw.githubusercontent.com/mediathekview/zapp/main/app/src/main/res/raw/channels.json'
             'sonst,D Sonstige,kodi,https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_main.m3u'
             'lokal,D lokal,kodi,https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_local.m3u'
-            'magenta,MagentaTV (Multicast),magenta,https://db.iptv.blog/multicastadressliste/m3u'
+            'magenta,MagentaTV,magenta,https://db.iptv.blog/multicastadressliste/m3u'
             'ach,AT CH,kodi,https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_atch.m3u'
             'usuk,US UK,kodi,https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_usuk.m3u'
             'inter,International,kodi,https://raw.githubusercontent.com/jnk22/kodinerds-iptv/master/iptv/clean/clean_tv_international.m3u'
@@ -123,7 +123,6 @@ get_new_channels(){
         echo "> $line"
     done <<< "$result"
 }
-
 
 import_m3u_file() {
     local file="$1"
@@ -303,7 +302,7 @@ get_channels_magenta(){
             elif [[ "$line" != \#* ]]; then
                  url="$line"
                  if [[ -n "$current_name" ]] && [[ -n "$url" ]]; then
-                     sqlite3 .tvmenu.db "INSERT OR IGNORE INTO senderlisten VALUES ('magenta', '$current_name', '$url', 'MagentaTV (Multicast)');"
+                     sqlite3 .tvmenu.db "INSERT OR IGNORE INTO senderlisten VALUES ('magenta', '$current_name', '$url', 'MagentaTV');"
                      current_name=""
                  fi
             fi
@@ -325,7 +324,7 @@ cluster_channels_by_prefix() {
 
     while IFS= read -r channel; do
         grp_channels+=("$channel")
-    done < <(sqlite3 .tvmenu.db "SELECT sendername FROM senderlisten WHERE liste=\"$akt_senderliste\" AND group_name=\"$grp\" ORDER BY sendername;")
+    done < <(sqlite3 .tvmenu.db "SELECT sendername FROM senderlisten WHERE liste=\"$akt_senderliste\" AND group_name=\"$grp\" ORDER BY sendername COLLATE NOCASE;")
 
     for sender in "${grp_channels[@]}"; do
         sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('N', \"${akt_senderliste}\", \"${sender}\", \"$item_selected'${sender}'\");"
@@ -395,7 +394,7 @@ update_sendermenu(){
         local distinct_groups=()
         while IFS= read -r grp; do
             distinct_groups+=("$grp")
-        done < <(sqlite3 .tvmenu.db "SELECT DISTINCT group_name FROM senderlisten WHERE liste=\"$akt_senderliste\" ORDER BY group_name;")
+        done < <(sqlite3 .tvmenu.db "SELECT DISTINCT group_name FROM senderlisten WHERE liste=\"$akt_senderliste\" ORDER BY group_name COLLATE NOCASE;")
 
         if [[ ${#distinct_groups[@]} -eq 0 ]]; then continue; fi
         
@@ -413,15 +412,16 @@ senderlisten_auswahl_anlegen(){
     IFS=$'\n'
         for liste in $(sqlite3 .tvmenu.db "SELECT DISTINCT liste FROM senderlisten;"); do
             command="${item_selected}list_${liste}"
-            # Senderlistenkürzel in Menüdarstellung ändern
-            liste=${liste/oerr/D ÖRR}
-            liste=${liste/sonst/D Sonstige}
-            liste=${liste/lokal/D lokal}
-            liste=${liste/ach/AT CH}
-            liste=${liste/usuk/US UK}
-            liste=${liste/inter/International}
-            liste=${liste/magenta/MagentaTV (Multicast)}
-            item="--${liste}"
+            
+            # Hole den Anzeigenamen aus der Datenbank, falls vorhanden
+            menu_name=$(sqlite3 .tvmenu.db "SELECT qname_menu FROM listenquellen WHERE qname_intern='${liste}';")
+            
+            # Falls kein Anzeigename in der DB gefunden wurde (z.B. bei lokalen M3U Dateien), verwende das Kürzel
+            if [[ -z "$menu_name" ]]; then
+                menu_name="$liste"
+            fi
+            
+            item="--${menu_name}"
             sqlite3 .tvmenu.db "INSERT INTO menuitems VALUES ('L', '', \"${item}\", \"${command}\");"
         done
     unset IFS
