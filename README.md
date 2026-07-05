@@ -97,6 +97,8 @@ Um eigene M3U-Playlists hinzuzufügen, entweder `.m3u` Dateien in den Ordner `~/
 The menulet is provided as is. It is tested under macOS Ventura (Intel).
 ZAPP and Playtypus are open source software, you can make a donation to the developers on their websites.
 
+> **AI-Transparenzhinweis**<br>ca. 90% des Code wurden per Hand erstellt, danach Überarbeitung per Claude/Gemini
+
 ### Reference 
 Die Streamadressen der ÖRR Sender werden aus dem Repository der **ZAPP** App für Android geladen.
 [ZAPP](https://github.com/mediathekview/zapp) by Christine Coenens is an open-source Android mediathek app.  
